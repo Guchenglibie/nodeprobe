@@ -1,0 +1,10 @@
+# macOS / Xcode
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.ipa
+Payload/
+
+# 生成的中间产物
+.DS_Store

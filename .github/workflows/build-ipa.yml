@@ -1,0 +1,63 @@
+name: Build unsigned IPA
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build NodeProbe
+    runs-on: macos-14
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          xcode-select -p
+
+      - name: Build app (unsigned)
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project NodeProbe.xcodeproj \
+            -target NodeProbe \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Package IPA
+        run: |
+          set -euo pipefail
+          APP=$(find . -maxdepth 8 -type d -name "NodeProbe.app" -not -path "*/.git/*" | head -n 1)
+          if [ -z "$APP" ]; then
+            echo "::error::找不到 NodeProbe.app，构建可能失败了"
+            find . -maxdepth 5 -type d -name "*.app" | head -n 20
+            exit 1
+          fi
+          echo "app bundle: $APP"
+          lipo -info "$APP/NodeProbe" || true
+          rm -rf Payload NodeProbe-unsigned.ipa
+          mkdir -p Payload
+          cp -R "$APP" Payload/
+          zip -qry NodeProbe-unsigned.ipa Payload
+          rm -rf Payload
+          ls -lh NodeProbe-unsigned.ipa
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: NodeProbe-unsigned-ipa
+          path: NodeProbe-unsigned.ipa
+          if-no-files-found: error
