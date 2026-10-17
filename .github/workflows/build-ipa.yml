@@ -24,13 +24,23 @@ jobs:
 
       - name: Build app (unsigned)
         run: |
-          set -euo pipefail
+          set -uo pipefail
+          echo "== 工作目录 =="
+          pwd
+          ls -la
+          echo "== 工程内容 =="
+          xcodebuild -list -project NodeProbe.xcodeproj || true
+          echo "== 开始编译 =="
+          set -e
+          # 注意：-derivedDataPath 必须配 -scheme 使用，配 -target 会直接报
+          # "The flag -scheme ... is required when specifying -derivedDataPath"。
+          # 所以这里用 SYMROOT 指定产物目录。
           xcodebuild \
             -project NodeProbe.xcodeproj \
             -target NodeProbe \
             -configuration Release \
             -sdk iphoneos \
-            -derivedDataPath build \
+            SYMROOT="$PWD/build" \
             ONLY_ACTIVE_ARCH=NO \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
@@ -40,10 +50,13 @@ jobs:
       - name: Package IPA
         run: |
           set -euo pipefail
-          APP=$(find . -maxdepth 8 -type d -name "NodeProbe.app" -not -path "*/.git/*" | head -n 1)
+          APP=$(find "$PWD/build" -maxdepth 4 -type d -name "NodeProbe.app" 2>/dev/null | head -n 1)
+          if [ -z "$APP" ]; then
+            APP=$(find . -maxdepth 6 -type d -name "NodeProbe.app" -not -path "*/.git/*" 2>/dev/null | head -n 1)
+          fi
           if [ -z "$APP" ]; then
             echo "::error::找不到 NodeProbe.app，构建可能失败了"
-            find . -maxdepth 5 -type d -name "*.app" | head -n 20
+            find . -maxdepth 6 -type d -name "*.app" | head -n 20
             exit 1
           fi
           echo "app bundle: $APP"

@@ -10,19 +10,23 @@ echo "==> 清理旧产物"
 rm -rf build Payload "$OUT"
 
 echo "==> 编译（不签名）"
+# 注意：-derivedDataPath 只能配 -scheme 用，配 -target 会报错，所以这里用 SYMROOT
 xcodebuild \
   -project "$APP_NAME.xcodeproj" \
   -target "$APP_NAME" \
   -configuration Release \
   -sdk iphoneos \
-  -derivedDataPath build \
+  SYMROOT="$PWD/build" \
   ONLY_ACTIVE_ARCH=NO \
   CODE_SIGNING_ALLOWED=NO \
   CODE_SIGNING_REQUIRED=NO \
   CODE_SIGN_IDENTITY="" \
   build
 
-APP=$(find . -maxdepth 8 -type d -name "$APP_NAME.app" | head -n 1)
+APP=$(find "$PWD/build" -maxdepth 4 -type d -name "$APP_NAME.app" 2>/dev/null | head -n 1)
+if [ -z "$APP" ]; then
+  APP=$(find . -maxdepth 6 -type d -name "$APP_NAME.app" 2>/dev/null | head -n 1)
+fi
 if [ -z "$APP" ]; then
   echo "找不到 $APP_NAME.app，构建可能失败了" >&2
   exit 1
