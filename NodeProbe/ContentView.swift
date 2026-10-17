@@ -27,7 +27,6 @@ struct ContentView: View {
                     optionsView
                     exitView
                     summaryView
-                    listView
                     footerView
                 }
                 .padding(.horizontal, 16)
